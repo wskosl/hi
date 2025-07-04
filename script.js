@@ -6,3 +6,7 @@
           alert("You didn't enter a name.");
         }
       }
+const map = L.map('map').setView([28.3949, 84.1240], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
