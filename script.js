@@ -15,3 +15,10 @@ const map = L.map('map').setView([28.3949, 84.1240], 5);
       [27.7172, 85.324],  // Kathmandu
       [32.219, 76.323]    // Dharamshala
     ];
+    const pathLine = L.polyline(tracePoints, { color: 'red' }).addTo(map);
+    
+    map.fitBounds(pathLine.getBounds());
+
+    L.marker(tracePoints[0]).addTo(map).bindPopup('Lhasa');
+    L.marker(tracePoints[1]).addTo(map).bindPopup('Kathmandu');
+    L.marker(tracePoints[2]).addTo(map).bindPopup('Dharamshala');
