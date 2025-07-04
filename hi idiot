@@ -1,0 +1,6 @@
+/bharkor
+  		├── index.html (link the style.css and script.js here: 
+├──			<link rel="stylesheet" href="style.css">
+├──			<script src="script.js"></script>
+ 		├── style.css (move everything inside your <style> tag </style>
+  		└── script.js (move everything inside your <script> tag </script>
