@@ -1,36 +1,98 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>This is the &lt;title&gt; — It shows up on the browser tab</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <meta charset="UTF-8" />
+    <title>Yumbhu Lhakhang – Tibet’s First Palace</title>
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <h1>&lt;h1&gt; You suck ahaahaha </h1>
+    <header class="site-header">
+      <h1>Yumbhu Lhakhang</h1>
+      <p class="subtitle">The Oldest Palace in Tibet — A Glimpse into Tibetan Origins</p>
+    </header>
+    <div class="container">
+      <div class="carousel">
+        <div class="carousel-slide">
+          <img src="images/one-monastery.jpg" alt="..." />
+          <p class="carousel-caption">            Yumbulagang, perched on a hill in the Yarlung Valley of Tibet, is believed to be the <strong>first building ever constructed in Tibet</strong>. Built during the 2nd century BCE, it was the palace of Tibet’s first king, <strong>Nyatri Tsenpo</strong>, who according to tradition, descended from the sky and was chosen by the people to lead.
+        </p>
+        </div>
+        <div class="carousel-slide hidden">
+          <img src="images/nyatri.png" alt="..." />
+          <p class="carousel-caption">Nyatri Tsenpo — The first king of Tibet, believed to have descended from the heavens, marking the beginning of Tibetan civilization and the sacred lineage of kings.</p>
+        </div>
+        <div class="carousel-slide hidden">
+          <img src="images/potala.jpg" alt="..." />
+          <p class="carousel-caption">Potala Palace — Built in the 7th century and later expanded, the Potala became the political and spiritual heart of Tibet, symbolizing unity, leadership, and the enduring presence of the Dalai Lamas.
+          </p>
+        </div>
+        <div class="carousel-slide hidden">
+          <img src="images/dharamsala.jpg" alt="..." />
+          <p class="carousel-caption">Dharamsala — The seat of the Tibetan Government-in-Exile, where His Holiness the Dalai Lama and the diaspora community continue to preserve Tibetan culture, identity, and self-determination beyond the borders of their homeland.
 
-    <p>&lt;p&gt; What are you doing here </p>
-    <ul>
-      <li>&lt;ul&gt; creates an unordered list:</li>
-      <li>&lt;li&gt; Each &lt;li&gt; is a list item</li>
-    </ul>
+</p>
+        </div>
+        <button class="prev-btn">◀</button>
+        <button class="next-btn">▶</button>
+      </div>
+      <div class="story-block quote-block">
+      <blockquote>
+            Over the centuries, Yumbulagang transformed from a royal residence to a sacred shrine, and eventually to a <strong>Buddhist monastery</strong> during the reign of the 5th Dalai Lama. It enshrines images of ancient kings, Buddhas, and early emperors like <strong>Songtsen Gampo</strong>, who introduced Buddhism and created the Tibetan script.
+      </blockquote>
+      </div>
+      <div class="story-block">
+         <div class="story-content">
+          <div class="story-image">
+            <img src="images/yarlung.jpg" alt="Yumbhulhagang Palace" />
+          </div>
+          <div class="story-text">
+            <h2>📍 Yarlung Valley</h2> 
+            <p> Yumbhulhagang, Tibet’s first palacemarks the beginning of Tibetan kingship and civilization. Perched above the Yarlung Valley, it embodies the union of myth, governance, and spiritual tradition at the roots of Tibetan identity. 
+            </p> 
+            <p> 
+            Nearly destroyed during China’s Cultural Revolution, Yumbhulhagang became a symbol of the broader effort to erase Tibet’s cultural and spiritual heritage following the 1950 occupation. Though later rebuilt, it remains a powerful reminder of the Tibetan people's deep connection to their land and the enduring strength of their identity. 
+            </p> 
+          </div> 
+        </div>
+      </div>
+      <div class="story-block"> 
+        <div class="story-content">
+          <div class="story-image">
+            <img src="images/lhasa.jpg" alt="Yumbhulhagang Palace" />
+          </div>
+          <div class="story-text">
+            <h2>🏯 Lhasa</h2> 
+            <p> In the 7th century, the capital moved from Yarlung to Lhasa under King Songtsen Gampo, who established it as the spiritual and political heart of Tibet. The Potala Palace and Jokhang Temple transformed the city into a center of governance, Buddhism, and pilgrimage. </p> 
+            <p> For centuries, Lhasa was the beating heart of Tibetan life. But following Chinese occupation and the 1959 uprising, it became a place of both resistance and repression — a city where Tibetan identity remains deeply rooted, yet constantly challenged. </p> 
+          </div> 
+        </div>
+      </div>
+      <div class="story-block"> 
+        <div class="story-content">
+          <div class="story-image">
+            <img src="images/mcleod.jpg" alt="Yumbhulhagang Palace" />
+          </div>
+          <div class="story-text">
+            <h2>⛰️ Dharamsala</h2> 
+            <p> After fleeing into exile in 1959, the Dalai Lama established the Tibetan government-in-exile in Dharamsala, India. Though outside Tibet’s borders, Dharamsala has become a third symbolic capital — a refuge where culture, language, and faith continue to flourish against all odds. </p> <p> From this hillside town, generations of Tibetans in exile have preserved their identity, taught their history, and sustained a vision of return. Dharamsala stands as a global reminder that while Tibet’s land may be occupied, its spirit remains unbroken. </p> 
+          </div>
+        </div>
+      </div>
+      <div class="story-block">
+      <h2>Road to the Present Tibetan Capital Lhasa and Exile</h2>
+      <p>Below are the approximate locations on map. Click and read more</p>
+      <div id="map"></div>
 
-    <a href="https://www.youtube.com/shorts/toS8fT8rEVE" target="_blank">&lt;a&gt; This is a link tag — it goes to another webpage</a>
+      <div id="story-panel" class="map-story-panel">
+        <h2></h2>
+        <p> From the sacred heights of Yumbhulhagang in the Yarlung Valley to the grandeur of the Potala Palace in Lhasa, Tibet’s historical journey reflects a profound evolution — from mythic beginnings to a unified kingdom grounded in spiritual leadership and cultural identity. The 7th-century move to Lhasa under King Songtsen Gampo marked a turning point in Tibet’s political and religious life, with the Potala becoming a lasting symbol of that union. Today, as the map traces these historic paths, it also points beyond — to Dharamsala in exile, where the spirit of Tibet continues to thrive through memory, resistance, and renewal. </p>
+      </div>
+    </div>
+  </div>
 
-    <br><br>
-
-    <img src="hi.jpg" alt="Example Image" width="500">
-    <p>&lt;img&gt; displays an image. The <code>src</code> attribute is the image URL.</p>
-
-    </button>
-    <p>And JavaScript adds interactivity. This button shows an alert.</p>
-       <h1>This is a &lt;script&gt; tag example</h1>
-    <p>Click the button to enter your name and see JavaScript in action!</p>
-
-    <button onclick="greetUser()">I will say Tashi Delek to your visior</button>
-    <h1>My Journey Map</h1>
-  <p>This map shows a sample trace of key locations.</p>
-  <div id="map"></div>
     <script src="script.js"></script>
   </body>
 </html>
