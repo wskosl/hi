@@ -191,7 +191,7 @@ function spawnPadAtTop() {
 }
 
 function decidePadType(x, y) {
-  if (score >= 500 && random(1) < 0.10 && !nearbyPadType(y, 'spike')) {
+  if (score >= 300 && random(1) < 0.10 && !nearbyPadType(y, 'spike')) {
     return { isFake: false, isSpike: true, isMoving: false };
   }
   if (random(1) < 0.20 && !nearbyPadType(y, 'spike') && !nearbyPadType(y, 'fake')) {
