@@ -1,25 +1,65 @@
 let player;
 let pads = [];
 let gravity = 0.5;
-let jumpStrength = 16;
+let jumpStrength = 22; // INCREASED to allow skipping over pads
 let scrollOffset = 0;
 let score = 0;
+let highScore = 0;
+let gameStarted = false;
+let playButton;
+let restartButton;
+let firstTime = true;
+let gameOver = false;
 
 function setup() {
   createCanvas(400, 600);
-  resetGame();
+  textAlign(CENTER, CENTER);
+  loadHighScore();
+
+  playButton = createButton("Play");
+  playButton.position(width / 2 - 30, height / 2);
+  playButton.mousePressed(startGame);
+
+  restartButton = createButton("Restart");
+  restartButton.position(width / 2 - 35, height / 2 + 50);
+  restartButton.mousePressed(() => {
+    gameOver = false;
+    resetGame();
+  });
+  restartButton.hide();
 }
 
 function draw() {
   background(30, 30, 50);
+
+  if (!gameStarted) {
+    fill(255);
+    textSize(28);
+    text("Press Play to Start", width / 2, height / 2 - 50);
+    textSize(20);
+    text("High Score: " + highScore, width / 2, height / 2 + 50);
+    return;
+  }
+
+  if (gameOver) {
+    fill(255);
+    textSize(32);
+    textAlign(CENTER, CENTER);
+    text("Game Over", width / 2, height / 2 - 60);
+    textSize(20);
+    text("Final Score: " + score, width / 2, height / 2 - 20);
+    text("High Score: " + highScore, width / 2, height / 2 + 10);
+    restartButton.show();
+    return;
+  }
 
   for (let i = pads.length - 1; i >= 0; i--) {
     pads[i].show();
 
     if (player.velocity.y > 0 && player.hits(pads[i])) {
       if (pads[i].isFake) {
-        resetGame(); // Reset on red pad touch
-        return; // Stop rest of draw after reset
+        endGame();
+        return;
       } else {
         player.jump();
       }
@@ -30,7 +70,6 @@ function draw() {
     }
   }
 
-  // Scroll screen upward
   if (player.pos.y < height / 2) {
     let diff = height / 2 - player.pos.y;
     player.pos.y = height / 2;
@@ -52,27 +91,54 @@ function draw() {
   fill(255);
   textSize(24);
   textAlign(LEFT, TOP);
-  text("Score: " + score, 10, 10);
+  text("High: " + highScore, 10, 10);
+  text("Score: " + score, 10, 40);
 }
 
 function keyPressed() {
-  if (key === 'A' || keyCode === LEFT_ARROW) {
-    player.move(-1);
-  } else if (key === 'D' || keyCode === RIGHT_ARROW) {
-    player.move(1);
+  if (!gameStarted) return;
+
+  let k = key.toLowerCase();
+
+  if (!gameOver) {
+    if (k === 'a') {
+      player.move(-1);
+    } else if (k === 'd') {
+      player.move(1);
+    }
+  }
+
+  if (gameOver && k === 'r') {
+    gameOver = false;
+    resetGame();
   }
 }
 
 function keyReleased() {
-  if (key === 'A' || keyCode === LEFT_ARROW || key === 'D' || keyCode === RIGHT_ARROW) {
+  if (!gameStarted || gameOver) return;
+
+  let k = key.toLowerCase();
+  if (k === 'a' || k === 'd') {
     player.move(0);
   }
 }
 
+function startGame() {
+  resetGame();
+  gameStarted = true;
+
+  if (firstTime) {
+    playButton.hide();
+    firstTime = false;
+  }
+}
+
 function resetGame() {
+  checkHighScore();
   pads = [];
   score = 0;
   scrollOffset = 0;
+  restartButton.hide();
 
   let startPad = new Pad(width / 2 - 40, height - 100, false);
   pads.push(startPad);
@@ -81,14 +147,14 @@ function resetGame() {
   let lastX = startPad.x;
 
   for (let i = 1; i < 8; i++) {
-    let y = lastY - random(90, 140);
+    let y = lastY - random(90, 130); // Slightly tighter spacing
     let x;
 
     do {
       x = constrain(lastX + random(-120, 120), 20, width - 100);
     } while (abs(x - lastX) < 60);
 
-    let isFake = random(1) < 0.05; // 5% chance red pad now
+    let isFake = decideIfFake(x, y);
     pads.push(new Pad(x, y, isFake));
     lastX = x;
     lastY = y;
@@ -97,23 +163,42 @@ function resetGame() {
   player = new Player(startPad.x + startPad.w / 2, startPad.y - 20);
 }
 
+function endGame() {
+  checkHighScore();
+  gameOver = true;
+}
+
 function spawnPadAtTop() {
   let highestPadY = min(...pads.map(p => p.y));
   let lastPad = pads.find(p => p.y === highestPadY);
-  let y = lastPad.y - random(90, 140);
+  let y = lastPad.y - random(90, 130);
   let x;
 
   do {
     x = constrain(lastPad.x + random(-120, 120), 20, width - 100);
   } while (abs(x - lastPad.x) < 60);
 
-  let isFake = random(1) < 0.05; // 5% chance red pad now
+  let isFake = decideIfFake(x, y);
   pads.push(new Pad(x, y, isFake));
+}
+
+function decideIfFake(x, y) {
+  // 20% chance for red pad
+  let chance = random(1);
+  if (chance > 0.2) return false;
+
+  // Ensure no red pad too close vertically
+  for (let p of pads) {
+    if (abs(p.y - y) < 150 && p.isFake) return false;
+  }
+
+  return true;
 }
 
 class Player {
   constructor(x, y) {
     this.pos = createVector(x, y);
+    this.prevPos = this.pos.copy();
     this.size = 40;
     this.velocity = createVector(0, 0);
     this.speed = 5;
@@ -121,6 +206,7 @@ class Player {
   }
 
   update() {
+    this.prevPos = this.pos.copy();
     this.velocity.y += gravity;
     this.pos.y += this.velocity.y;
     this.pos.x += this.direction * this.speed;
@@ -129,7 +215,7 @@ class Player {
     if (this.pos.x < 0) this.pos.x = width;
 
     if (this.pos.y > height + 200) {
-      resetGame();
+      endGame();
     }
   }
 
@@ -147,18 +233,16 @@ class Player {
   }
 
   hits(pad) {
-    let nextY = this.pos.y + this.velocity.y;
-    let playerBottom = nextY + this.size / 2;
+    let bottomPrev = this.prevPos.y + this.size / 2;
+    let bottomNow = this.pos.y + this.size / 2;
 
     let padTop = pad.y;
-    let isWithinX = this.pos.x > pad.x && this.pos.x < pad.x + pad.w;
+    let isCrossing = bottomPrev <= padTop && bottomNow >= padTop;
 
-    return (
-      playerBottom >= padTop &&
-      playerBottom <= padTop + 10 &&
-      isWithinX &&
-      this.velocity.y > 0
-    );
+    let isWithinX = this.pos.x + this.size / 4 > pad.x &&
+                    this.pos.x - this.size / 4 < pad.x + pad.w;
+
+    return isCrossing && isWithinX && this.velocity.y > 0;
   }
 }
 
@@ -182,5 +266,19 @@ class Pad {
 
   offScreen() {
     return this.y > height + 20;
+  }
+}
+
+function checkHighScore() {
+  if (score > highScore) {
+    highScore = score;
+    localStorage.setItem("highScore", highScore);
+  }
+}
+
+function loadHighScore() {
+  let stored = localStorage.getItem("highScore");
+  if (stored !== null) {
+    highScore = int(stored);
   }
 }
