@@ -1,7 +1,7 @@
 let player;
 let pads = [];
 let gravity = 0.5;
-let jumpStrength = 19; // Reduced for more natural jump
+let jumpStrength = 19;
 let scrollOffset = 0;
 let score = 0;
 let highScore = 0;
@@ -54,15 +54,23 @@ function draw() {
   }
 
   for (let i = pads.length - 1; i >= 0; i--) {
+    pads[i].update();
     pads[i].show();
 
     if (player.velocity.y > 0 && player.hits(pads[i])) {
       if (pads[i].isFake) {
         endGame();
         return;
+      } else if (pads[i].isSpike) {
+        player.jump();
       } else {
         player.jump();
       }
+    }
+
+    if (player.velocity.y < 0 && pads[i].isSpike && player.hitsSpikesFromBelow(pads[i])) {
+      endGame();
+      return;
     }
 
     if (pads[i] && pads[i].offScreen()) {
@@ -140,7 +148,7 @@ function resetGame() {
   scrollOffset = 0;
   restartButton.hide();
 
-  let startPad = new Pad(width / 2 - 40, height - 100, false);
+  let startPad = new Pad(width / 2 - 40, height - 100, false, false, false);
   pads.push(startPad);
 
   let lastY = startPad.y;
@@ -154,8 +162,8 @@ function resetGame() {
       x = constrain(lastX + random(-120, 120), 20, width - 100);
     } while (abs(x - lastX) < 60);
 
-    let isFake = decideIfFake(x, y);
-    pads.push(new Pad(x, y, isFake));
+    let type = decidePadType(x, y);
+    pads.push(new Pad(x, y, type.isFake, type.isSpike, type.isMoving));
     lastX = x;
     lastY = y;
   }
@@ -178,19 +186,32 @@ function spawnPadAtTop() {
     x = constrain(lastPad.x + random(-120, 120), 20, width - 100);
   } while (abs(x - lastPad.x) < 60);
 
-  let isFake = decideIfFake(x, y);
-  pads.push(new Pad(x, y, isFake));
+  let type = decidePadType(x, y);
+  pads.push(new Pad(x, y, type.isFake, type.isSpike, type.isMoving));
 }
 
-function decideIfFake(x, y) {
-  let chance = random(1);
-  if (chance > 0.2) return false;
-
-  for (let p of pads) {
-    if (abs(p.y - y) < 150 && p.isFake) return false;
+function decidePadType(x, y) {
+  if (score >= 500 && random(1) < 0.10 && !nearbyPadType(y, 'spike')) {
+    return { isFake: false, isSpike: true, isMoving: false };
   }
+  if (random(1) < 0.20 && !nearbyPadType(y, 'spike') && !nearbyPadType(y, 'fake')) {
+    return { isFake: true, isSpike: false, isMoving: false };
+  }
+  let movingChance = score >= 500 ? 0.40 : 0.15;
+  if (random(1) < movingChance) {
+    return { isFake: false, isSpike: false, isMoving: true };
+  }
+  return { isFake: false, isSpike: false, isMoving: false };
+}
 
-  return true;
+function nearbyPadType(y, type) {
+  for (let p of pads) {
+    if (abs(p.y - y) < 150) {
+      if (type === 'spike' && p.isSpike) return true;
+      if (type === 'fake' && p.isFake) return true;
+    }
+  }
+  return false;
 }
 
 class Player {
@@ -242,24 +263,84 @@ class Player {
 
     return isCrossing && isWithinX && this.velocity.y > 0;
   }
+
+  hitsSpikesFromBelow(pad) {
+    let topPrev = this.prevPos.y - this.size / 2;
+    let topNow = this.pos.y - this.size / 2;
+
+    let spikeBottom = pad.y + pad.h;
+
+    let isCrossing = topPrev >= spikeBottom && topNow <= spikeBottom;
+
+    let isWithinX = this.pos.x + this.size / 4 > pad.x &&
+                    this.pos.x - this.size / 4 < pad.x + pad.w;
+
+    return isCrossing && isWithinX;
+  }
 }
 
 class Pad {
-  constructor(x, y, isFake = false) {
+  constructor(x, y, isFake = false, isSpike = false, isMoving = false) {
     this.x = x;
     this.y = y;
+    this.baseX = x;
     this.w = 80;
     this.h = 10;
     this.isFake = isFake;
+    this.isSpike = isSpike;
+    this.isMoving = isMoving;
+    this.moveAmplitude = min(this.baseX - 20, width - (this.baseX + this.w) - 20);
+    this.moveAmplitude = max(this.moveAmplitude, 150);
+    this.moveSpeed = 0.015 + random(0, 0.01);
+    this.movePhase = random(TWO_PI);
+  }
+
+  update() {
+    if (this.isMoving) {
+      this.x = this.baseX + this.moveAmplitude * sin(frameCount * this.moveSpeed + this.movePhase);
+      this.x = constrain(this.x, 20, width - this.w - 20);
+    }
   }
 
   show() {
-    if (this.isFake) {
+    if (this.isSpike) {
+      fill(0);
+      rect(this.x, this.y, this.w, this.h);
+
+      let spikeCount = 4;
+      let spikeWidth = this.w / spikeCount;
+      stroke(255);
+      strokeWeight(2);
+      fill(30);
+      for (let i = 0; i < spikeCount; i++) {
+        let x1 = this.x + i * spikeWidth;
+        let x2 = x1 + spikeWidth / 2;
+        let x3 = x1 + spikeWidth;
+        let y1 = this.y + this.h;
+        let y2 = y1 + 15;
+        beginShape();
+        vertex(x1, y1);
+        vertex(x2, y2);
+        vertex(x3, y1);
+        endShape(CLOSE);
+      }
+      noStroke();
+
+    } else if (this.isFake) {
       fill(255, 70, 70);
+      rect(this.x, this.y, this.w, this.h);
     } else {
       fill(0, 200, 255);
+      rect(this.x, this.y, this.w, this.h);
+
+      if (this.isMoving) {
+        stroke(255, 255, 255, 100);
+        strokeWeight(3);
+        noFill();
+        rect(this.x - 2, this.y - 2, this.w + 4, this.h + 4);
+        noStroke();
+      }
     }
-    rect(this.x, this.y, this.w, this.h);
   }
 
   offScreen() {
