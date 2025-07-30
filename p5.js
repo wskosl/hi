@@ -1,7 +1,7 @@
 let player;
 let pads = [];
 let gravity = 0.5;
-let jumpStrength = 22; // INCREASED to allow skipping over pads
+let jumpStrength = 19; // Reduced for more natural jump
 let scrollOffset = 0;
 let score = 0;
 let highScore = 0;
@@ -147,7 +147,7 @@ function resetGame() {
   let lastX = startPad.x;
 
   for (let i = 1; i < 8; i++) {
-    let y = lastY - random(90, 130); // Slightly tighter spacing
+    let y = lastY - random(90, 130);
     let x;
 
     do {
@@ -183,11 +183,9 @@ function spawnPadAtTop() {
 }
 
 function decideIfFake(x, y) {
-  // 20% chance for red pad
   let chance = random(1);
   if (chance > 0.2) return false;
 
-  // Ensure no red pad too close vertically
   for (let p of pads) {
     if (abs(p.y - y) < 150 && p.isFake) return false;
   }
