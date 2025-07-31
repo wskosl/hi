@@ -11,6 +11,15 @@ let restartButton;
 let firstTime = true;
 let gameOver = false;
 
+let bounceSound;
+let gameOverSound;
+
+function preload() {
+  soundFormats('mp3', 'wav');
+  bounceSound = loadSound('Sound/plasma-bounce-357127-[AudioTrimmer.com].mp3');
+  gameOverSound = loadSound('Sound/negative_beeps-6008.mp3');
+}
+
 function setup() {
   createCanvas(400, 600);
   textAlign(CENTER, CENTER);
@@ -63,8 +72,10 @@ function draw() {
         return;
       } else if (pads[i].isSpike) {
         player.jump();
+        bounceSound.play();
       } else {
         player.jump();
+        bounceSound.play();
       }
     }
 
@@ -173,6 +184,7 @@ function resetGame() {
 
 function endGame() {
   checkHighScore();
+  gameOverSound.play();
   gameOver = true;
 }
 
@@ -259,7 +271,7 @@ class Player {
     let isCrossing = bottomPrev <= padTop && bottomNow >= padTop;
 
     let isWithinX = this.pos.x + this.size / 4 > pad.x &&
-                    this.pos.x - this.size / 4 < pad.x + pad.w;
+      this.pos.x - this.size / 4 < pad.x + pad.w;
 
     return isCrossing && isWithinX && this.velocity.y > 0;
   }
@@ -273,7 +285,7 @@ class Player {
     let isCrossing = topPrev >= spikeBottom && topNow <= spikeBottom;
 
     let isWithinX = this.pos.x + this.size / 4 > pad.x &&
-                    this.pos.x - this.size / 4 < pad.x + pad.w;
+      this.pos.x - this.size / 4 < pad.x + pad.w;
 
     return isCrossing && isWithinX;
   }
@@ -283,22 +295,42 @@ class Pad {
   constructor(x, y, isFake = false, isSpike = false, isMoving = false) {
     this.x = x;
     this.y = y;
-    this.baseX = x;
     this.w = 80;
     this.h = 10;
     this.isFake = isFake;
     this.isSpike = isSpike;
     this.isMoving = isMoving;
-    this.moveAmplitude = min(this.baseX - 20, width - (this.baseX + this.w) - 20);
-    this.moveAmplitude = max(this.moveAmplitude, 150);
-    this.moveSpeed = 0.015 + random(0, 0.01);
-    this.movePhase = random(TWO_PI);
+
+    this.minX = 20;
+    this.maxX = width - this.w - 20;
+
+    this.direction = random([1, -1]); // start left or right
+
+    this.speed = 3.5; // <-- increased max speed here from 1.5 to 3.5
+    this.currentSpeed = 0;
+    this.acceleration = 0.05;
+    this.decelerationDistance = 40; // distance from edge where it eases
   }
 
   update() {
     if (this.isMoving) {
-      this.x = this.baseX + this.moveAmplitude * sin(frameCount * this.moveSpeed + this.movePhase);
-      this.x = constrain(this.x, 20, width - this.w - 20);
+      let targetSpeed = this.speed * this.direction;
+
+      // Smooth deceleration when near edge
+      if ((this.direction === 1 && this.x >= this.maxX - this.decelerationDistance) ||
+        (this.direction === -1 && this.x <= this.minX + this.decelerationDistance)) {
+        // Ease to zero speed near edge
+        this.currentSpeed = lerp(this.currentSpeed, 0, 0.1);
+        if (abs(this.currentSpeed) < 0.1) {
+          this.direction *= -1; // reverse direction
+        }
+      } else {
+        // Accelerate toward target speed
+        this.currentSpeed = lerp(this.currentSpeed, targetSpeed, 0.1);
+      }
+
+      this.x += this.currentSpeed;
+      this.x = constrain(this.x, this.minX, this.maxX);
     }
   }
 
@@ -348,16 +380,16 @@ class Pad {
   }
 }
 
-function checkHighScore() {
-  if (score > highScore) {
-    highScore = score;
-    localStorage.setItem("highScore", highScore);
+function loadHighScore() {
+  let savedScore = getItem('highscore');
+  if (savedScore !== null) {
+    highScore = savedScore;
   }
 }
 
-function loadHighScore() {
-  let stored = localStorage.getItem("highScore");
-  if (stored !== null) {
-    highScore = int(stored);
+function checkHighScore() {
+  if (score > highScore) {
+    highScore = score;
+    storeItem('highscore', highScore);
   }
 }
