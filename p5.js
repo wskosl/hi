@@ -13,11 +13,12 @@ let gameOver = false;
 
 let bounceSound;
 let gameOverSound;
+let bgMusic;
 
 function preload() {
-  soundFormats('mp3', 'wav');
   bounceSound = loadSound('Sound/plasma-bounce-357127-[AudioTrimmer.com].mp3');
   gameOverSound = loadSound('Sound/negative_beeps-6008.mp3');
+  bgMusic = loadSound('Sound/Different Heaven - Nekozilla [NCS Release].mp3');
 }
 
 function setup() {
@@ -150,10 +151,25 @@ function startGame() {
     playButton.hide();
     firstTime = false;
   }
+
+  if (!bgMusic.isPlaying()) {
+    bgMusic.setVolume(0.2);
+    bgMusic.loop();
+  }
 }
 
 function resetGame() {
   checkHighScore();
+
+  if (gameOverSound.isPlaying()) {
+    gameOverSound.stop();
+  }
+
+  if (!bgMusic.isPlaying()) {
+    bgMusic.setVolume(0.2);
+    bgMusic.loop();
+  }
+
   pads = [];
   score = 0;
   scrollOffset = 0;
@@ -184,8 +200,13 @@ function resetGame() {
 
 function endGame() {
   checkHighScore();
-  gameOverSound.play();
   gameOver = true;
+  restartButton.show();
+
+  if (bgMusic.isPlaying()) {
+    bgMusic.stop();
+  }
+  gameOverSound.play();
 }
 
 function spawnPadAtTop() {
@@ -271,7 +292,7 @@ class Player {
     let isCrossing = bottomPrev <= padTop && bottomNow >= padTop;
 
     let isWithinX = this.pos.x + this.size / 4 > pad.x &&
-      this.pos.x - this.size / 4 < pad.x + pad.w;
+                    this.pos.x - this.size / 4 < pad.x + pad.w;
 
     return isCrossing && isWithinX && this.velocity.y > 0;
   }
@@ -285,7 +306,7 @@ class Player {
     let isCrossing = topPrev >= spikeBottom && topNow <= spikeBottom;
 
     let isWithinX = this.pos.x + this.size / 4 > pad.x &&
-      this.pos.x - this.size / 4 < pad.x + pad.w;
+                    this.pos.x - this.size / 4 < pad.x + pad.w;
 
     return isCrossing && isWithinX;
   }
@@ -295,95 +316,88 @@ class Pad {
   constructor(x, y, isFake = false, isSpike = false, isMoving = false) {
     this.x = x;
     this.y = y;
+    this.baseX = x;
     this.w = 80;
     this.h = 10;
     this.isFake = isFake;
     this.isSpike = isSpike;
     this.isMoving = isMoving;
+    this.moveAmplitude = min(this.baseX - 20, width - (this.baseX + this.w) - 20);
+    this.moveAmplitude = max(this.moveAmplitude, 150);
+    this.moveSpeed = 0.03 + random(0, 0.01); // faster movement
+    this.movePhase = random(TWO_PI);
 
-    this.minX = 20;
-    this.maxX = width - this.w - 20;
-
-    this.direction = random([1, -1]); // start left or right
-
-    this.speed = 3.5; // <-- increased max speed here from 1.5 to 3.5
-    this.currentSpeed = 0;
-    this.acceleration = 0.05;
-    this.decelerationDistance = 40; // distance from edge where it eases
+    // For smooth side approach logic
+    this.velocity = this.moveSpeed * this.moveAmplitude; // initial velocity magnitude
+    this.movingRight = true; // direction flag
   }
 
   update() {
     if (this.isMoving) {
-      let targetSpeed = this.speed * this.direction;
-
-      // Smooth deceleration when near edge
-      if ((this.direction === 1 && this.x >= this.maxX - this.decelerationDistance) ||
-        (this.direction === -1 && this.x <= this.minX + this.decelerationDistance)) {
-        // Ease to zero speed near edge
-        this.currentSpeed = lerp(this.currentSpeed, 0, 0.1);
-        if (abs(this.currentSpeed) < 0.1) {
-          this.direction *= -1; // reverse direction
-        }
+      // Move pad by velocity
+      if (this.movingRight) {
+        this.x += this.velocity;
       } else {
-        // Accelerate toward target speed
-        this.currentSpeed = lerp(this.currentSpeed, targetSpeed, 0.1);
+        this.x -= this.velocity;
       }
 
-      this.x += this.currentSpeed;
-      this.x = constrain(this.x, this.minX, this.maxX);
+      // Slow down near edges
+      if (this.x > width - this.w - 40) {
+        // approaching right edge, slow down and reverse
+        this.velocity = max(this.velocity - 0.3, 1);
+        if (this.velocity <= 1) this.movingRight = false;
+      } else if (this.x < 40) {
+        // approaching left edge, slow down and reverse
+        this.velocity = max(this.velocity - 0.3, 1);
+        if (this.velocity <= 1) this.movingRight = true;
+      } else {
+        // speed up to normal when away from edges
+        this.velocity = min(this.velocity + 0.2, this.moveSpeed * this.moveAmplitude);
+      }
     }
   }
 
   show() {
-    if (this.isSpike) {
-      fill(0);
-      rect(this.x, this.y, this.w, this.h);
+    noStroke();
 
-      let spikeCount = 4;
+    if (this.isSpike) {
+      fill(0); // black
+      rect(this.x, this.y, this.w, this.h);
+      fill(150, 0, 0);
+      // Draw spikes
+      let spikeCount = 5;
       let spikeWidth = this.w / spikeCount;
+      for (let i = 0; i < spikeCount; i++) {
+        triangle(
+          this.x + i * spikeWidth, this.y,
+          this.x + i * spikeWidth + spikeWidth / 2, this.y - 15,
+          this.x + (i + 1) * spikeWidth, this.y
+        );
+      }
+    } else if (this.isFake) {
+      fill(255, 70, 70); // red
+      rect(this.x, this.y, this.w, this.h);
+    } else if (this.isMoving) {
       stroke(255);
       strokeWeight(2);
-      fill(30);
-      for (let i = 0; i < spikeCount; i++) {
-        let x1 = this.x + i * spikeWidth;
-        let x2 = x1 + spikeWidth / 2;
-        let x3 = x1 + spikeWidth;
-        let y1 = this.y + this.h;
-        let y2 = y1 + 15;
-        beginShape();
-        vertex(x1, y1);
-        vertex(x2, y2);
-        vertex(x3, y1);
-        endShape(CLOSE);
-      }
+      fill(0, 200, 255); // blue
+      rect(this.x, this.y, this.w, this.h, 5);
       noStroke();
-
-    } else if (this.isFake) {
-      fill(255, 70, 70);
-      rect(this.x, this.y, this.w, this.h);
     } else {
-      fill(0, 200, 255);
-      rect(this.x, this.y, this.w, this.h);
-
-      if (this.isMoving) {
-        stroke(255, 255, 255, 100);
-        strokeWeight(3);
-        noFill();
-        rect(this.x - 2, this.y - 2, this.w + 4, this.h + 4);
-        noStroke();
-      }
+      fill(0, 200, 255); // blue
+      rect(this.x, this.y, this.w, this.h, 5);
     }
   }
 
   offScreen() {
-    return this.y > height + 20;
+    return this.y > height + 50;
   }
 }
 
 function loadHighScore() {
-  let savedScore = getItem('highscore');
-  if (savedScore !== null) {
-    highScore = savedScore;
+  let stored = getItem('highscore');
+  if (stored !== null) {
+    highScore = stored;
   }
 }
 
