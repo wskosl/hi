@@ -15,6 +15,8 @@ let bounceSound;
 let gameOverSound;
 let bgMusic;
 
+let currentDirectionKey = null;
+
 function preload() {
   bounceSound = loadSound('Sound/plasma-bounce-357127-[AudioTrimmer.com].mp3');
   gameOverSound = loadSound('Sound/negative_beeps-6008.mp3');
@@ -53,8 +55,8 @@ function draw() {
 
   if (gameOver) {
     fill(255);
-    textSize(32);
     textAlign(CENTER, CENTER);
+    textSize(32);
     text("Game Over", width / 2, height / 2 - 60);
     textSize(20);
     text("Final Score: " + score, width / 2, height / 2 - 20);
@@ -71,11 +73,9 @@ function draw() {
       if (pads[i].isFake) {
         endGame();
         return;
-      } else if (pads[i].isSpike) {
-        player.jump();
-        bounceSound.play();
       } else {
         player.jump();
+        bounceSound.setVolume(0.3);
         bounceSound.play();
       }
     }
@@ -121,9 +121,11 @@ function keyPressed() {
   let k = key.toLowerCase();
 
   if (!gameOver) {
-    if (k === 'a') {
+    if (k === 'a' || keyCode === LEFT_ARROW) {
+      currentDirectionKey = 'left';
       player.move(-1);
-    } else if (k === 'd') {
+    } else if (k === 'd' || keyCode === RIGHT_ARROW) {
+      currentDirectionKey = 'right';
       player.move(1);
     }
   }
@@ -138,7 +140,16 @@ function keyReleased() {
   if (!gameStarted || gameOver) return;
 
   let k = key.toLowerCase();
-  if (k === 'a' || k === 'd') {
+
+  if ((k === 'a' && currentDirectionKey === 'left') ||
+      (keyCode === LEFT_ARROW && currentDirectionKey === 'left')) {
+    currentDirectionKey = null;
+    player.move(0);
+  }
+
+  if ((k === 'd' && currentDirectionKey === 'right') ||
+      (keyCode === RIGHT_ARROW && currentDirectionKey === 'right')) {
+    currentDirectionKey = null;
     player.move(0);
   }
 }
@@ -153,27 +164,22 @@ function startGame() {
   }
 
   if (!bgMusic.isPlaying()) {
-    bgMusic.setVolume(0.2);
+    bgMusic.setVolume(0.1);
     bgMusic.loop();
   }
 }
 
 function resetGame() {
   checkHighScore();
-
-  if (gameOverSound.isPlaying()) {
-    gameOverSound.stop();
-  }
-
-  if (!bgMusic.isPlaying()) {
-    bgMusic.setVolume(0.2);
-    bgMusic.loop();
-  }
-
   pads = [];
   score = 0;
   scrollOffset = 0;
   restartButton.hide();
+
+  if (!bgMusic.isPlaying()) {
+    bgMusic.setVolume(0.1);
+    bgMusic.loop();
+  }
 
   let startPad = new Pad(width / 2 - 40, height - 100, false, false, false);
   pads.push(startPad);
@@ -201,12 +207,15 @@ function resetGame() {
 function endGame() {
   checkHighScore();
   gameOver = true;
-  restartButton.show();
 
   if (bgMusic.isPlaying()) {
     bgMusic.stop();
   }
-  gameOverSound.play();
+
+  if (!gameOverSound.isPlaying()) {
+    gameOverSound.setVolume(0.2);
+    gameOverSound.play();
+  }
 }
 
 function spawnPadAtTop() {
@@ -287,7 +296,6 @@ class Player {
   hits(pad) {
     let bottomPrev = this.prevPos.y + this.size / 2;
     let bottomNow = this.pos.y + this.size / 2;
-
     let padTop = pad.y;
     let isCrossing = bottomPrev <= padTop && bottomNow >= padTop;
 
@@ -300,7 +308,6 @@ class Player {
   hitsSpikesFromBelow(pad) {
     let topPrev = this.prevPos.y - this.size / 2;
     let topNow = this.pos.y - this.size / 2;
-
     let spikeBottom = pad.y + pad.h;
 
     let isCrossing = topPrev >= spikeBottom && topNow <= spikeBottom;
@@ -322,82 +329,69 @@ class Pad {
     this.isFake = isFake;
     this.isSpike = isSpike;
     this.isMoving = isMoving;
-    this.moveAmplitude = min(this.baseX - 20, width - (this.baseX + this.w) - 20);
-    this.moveAmplitude = max(this.moveAmplitude, 150);
-    this.moveSpeed = 0.03 + random(0, 0.01); // faster movement
+    this.moveSpeed = 0.04 + random(0, 0.02);
     this.movePhase = random(TWO_PI);
-
-    // For smooth side approach logic
-    this.velocity = this.moveSpeed * this.moveAmplitude; // initial velocity magnitude
-    this.movingRight = true; // direction flag
   }
 
   update() {
     if (this.isMoving) {
-      // Move pad by velocity
-      if (this.movingRight) {
-        this.x += this.velocity;
-      } else {
-        this.x -= this.velocity;
-      }
-
-      // Slow down near edges
-      if (this.x > width - this.w - 40) {
-        // approaching right edge, slow down and reverse
-        this.velocity = max(this.velocity - 0.3, 1);
-        if (this.velocity <= 1) this.movingRight = false;
-      } else if (this.x < 40) {
-        // approaching left edge, slow down and reverse
-        this.velocity = max(this.velocity - 0.3, 1);
-        if (this.velocity <= 1) this.movingRight = true;
-      } else {
-        // speed up to normal when away from edges
-        this.velocity = min(this.velocity + 0.2, this.moveSpeed * this.moveAmplitude);
-      }
+      let minX = 20;
+      let maxX = width - this.w - 20;
+      let amplitude = (maxX - minX) / 2;
+      let centerX = minX + amplitude;
+      this.x = centerX + amplitude * sin(frameCount * this.moveSpeed + this.movePhase);
     }
   }
 
   show() {
-    noStroke();
-
     if (this.isSpike) {
-      fill(0); // black
-      rect(this.x, this.y, this.w, this.h);
-      fill(150, 0, 0);
-      // Draw spikes
-      let spikeCount = 5;
+      fill(0);
+      rect(this.x, this.y, this.w, this.h, 12);
+
+      let spikeCount = 4;
       let spikeWidth = this.w / spikeCount;
-      for (let i = 0; i < spikeCount; i++) {
-        triangle(
-          this.x + i * spikeWidth, this.y,
-          this.x + i * spikeWidth + spikeWidth / 2, this.y - 15,
-          this.x + (i + 1) * spikeWidth, this.y
-        );
-      }
-    } else if (this.isFake) {
-      fill(255, 70, 70); // red
-      rect(this.x, this.y, this.w, this.h);
-    } else if (this.isMoving) {
       stroke(255);
       strokeWeight(2);
-      fill(0, 200, 255); // blue
-      rect(this.x, this.y, this.w, this.h, 5);
+      fill(30);
+      for (let i = 0; i < spikeCount; i++) {
+        let x1 = this.x + i * spikeWidth;
+        let x2 = x1 + spikeWidth / 2;
+        let x3 = x1 + spikeWidth;
+        let y1 = this.y;
+        let y2 = y1 - 15;
+        beginShape();
+        vertex(x1, y1);
+        vertex(x2, y2);
+        vertex(x3, y1);
+        endShape(CLOSE);
+      }
       noStroke();
+
+    } else if (this.isFake) {
+      fill(255, 70, 70);
+      rect(this.x, this.y, this.w, this.h, 12);
     } else {
-      fill(0, 200, 255); // blue
-      rect(this.x, this.y, this.w, this.h, 5);
+      fill(0, 200, 255);
+      rect(this.x, this.y, this.w, this.h, 12);
+      if (this.isMoving) {
+        stroke(255, 255, 255, 100);
+        strokeWeight(3);
+        noFill();
+        rect(this.x - 2, this.y - 2, this.w + 4, this.h + 4, 12);
+        noStroke();
+      }
     }
   }
 
   offScreen() {
-    return this.y > height + 50;
+    return this.y > height + 20;
   }
 }
 
 function loadHighScore() {
-  let stored = getItem('highscore');
-  if (stored !== null) {
-    highScore = stored;
+  let savedScore = getItem('highscore');
+  if (savedScore !== null) {
+    highScore = savedScore;
   }
 }
 
